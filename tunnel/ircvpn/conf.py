@@ -3,21 +3,6 @@
 # | ircvpn - irc virtual public network configuration |
 # |___________________________________________________|
 
-# config options
-# IRC
-#    - server (ip, port, ssl)
-#	 - channel
-#	 - nick prefix
-#	 - maximum line length
-# Network
-#    - device: ip, netmask, mtu
-#    - dhclient instead of static ip?
-#    - routing?
-#	 - dns?
-# Tunnel
-#	 - security settings
-#	 - mode (hub or switch)
-
 import os
 
 Conf = {
@@ -39,9 +24,6 @@ Conf = {
 		
 	# ======== IRC settings ========
 	# irc-server to use
-	#ircserver = ('irc.someserver.de', 6667)
-	#ircserver = ('testine.someserver.de', 6667)
-	#ircserver = ('192.168.56.1', 6667)
 	'ircserver': ('testine.someserver.de', 6667),
 	
 	# broadcast domain (where to meet other clients)
@@ -78,6 +60,6 @@ Conf = {
 	
 	# ======== misc settings ========
 	# executed after being connected to the server
-	# arguments: <command> <device>
+	# %s will be replaces with the device name
 	'postConnectCmd': '/sbin/dhclient -v %s',
 }

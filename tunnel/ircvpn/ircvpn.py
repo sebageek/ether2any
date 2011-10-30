@@ -119,7 +119,7 @@ class IrcVPN(Ether2Any):
 				partmsg = base64.b64decode(basemsg[:64])
 				if len(partmsg) < 24:
 					raise ValueError()
-			except base64.binascii.Error, ValueError:
+			except (base64.binascii.Error, ValueError):
 				self.irclog.warning("Could not decode parted base64 message, discarding")
 				return
 			self.packets[msgid] = basemsg
