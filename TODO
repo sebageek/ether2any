@@ -1,0 +1,7 @@
+TODO
+ - 00 80 at beginning of every packet - what is this?
+ - writing random data to dev generates OSError - handle this
+
+FEATURES
+ - implement configurable packet aggregation
+ - if possible and useful: helper to replace ethernet
