@@ -52,7 +52,9 @@ class NetMailHandler():
 		#        Seem to occure only when smtplib sends (long) mails to smtpd
 		text = text.replace("\n ", "")
 		try:
+			#tmpTime = time.time()
 			data = self.generator.decode(text)
+			#print "DECODE", time.time() - tmpTime
 		except DecodingException, e:
 			print "Error: Could not decode text! See error below"
 			print " < ----------- 8< ----------- > "
@@ -108,11 +110,14 @@ class SimpleIMAPClient(threading.Thread):
 			print "Error!"
 	
 	def fetchNewMailToDev(self):
+		t = time.time()
+		decTime = 0.0
 		l = self.imap.search(None, 'UNSEEN')
 		newMsgIds = l[1][0].replace(" ", ",")
 		if newMsgIds == '':
 			return False
 		msgs = self.imap.fetch(newMsgIds, '(RFC822)')
+		print "Imap: Found %d new messages" % len(newMsgIds.split(",")), "Fetch done:", time.time()-t
 		for msg in msgs[1]:
 			if msg == ")":
 				# where does this come from...?
@@ -121,7 +126,15 @@ class SimpleIMAPClient(threading.Thread):
 				print "Warning: Message broken, %d values in list, text '%s'" % (len(msg), msg)
 				continue
 			(flags, data) = msg
+			tmpTime = time.time()
 			self.handler.receiveMail(None, self.mailTo, data)
+			decTime += time.time() - tmpTime
+			#print "\t Recvd mail", time.time()-t, "decoding", decTime, "non acc", time.time() - tmpTime
+		if self.imapConf['deleteAfterwards']:
+			for msgid in newMsgIds.split(","):
+				self.imap.store(msgid, "+FLAGS", r"\DELETED")
+			self.imap.expunge()
+		print "Processing of %d messages in %fs (decoding took %fs)" % (len(newMsgIds.split(",")), time.time()-t, decTime)
 		return (len(msgs) > 0)
 	
 	def run(self):
@@ -138,7 +151,6 @@ class SimpleIMAPClient(threading.Thread):
 					time.sleep(self.imapConf['mailWait'][tries])
 					tries += 1
 			# go into idle mode
-			# NOT IMPLEMENTED
 			if self.imapConf['useIDLE']:
 				print "Going into IDLE mode..."
 				self.idleTagNum += 1
@@ -202,11 +214,14 @@ class MailTunnel(Ether2Any):
 		e['Subject'] = subject
 		e['From'] = fromAddr
 		e['To'] = ",\n".join(toAddrs)
+		t = time.time()
 		try:
 			self.smtp.sendmail(fromAddr, toAddrs, e.as_string())
+			#print "Mail took %fs" % (time.time()-t)
 		except smtplib.SMTPServerDisconnected:
 			self.connectSMTP()
 			self.smtp.sendmail(fromAddr, toAddrs, e.as_string())
+			print "Mail+reconnect took %fs" % (time.time()-t)
 	
 	def sendToNet(self, packet):
 		data = self.generator.encode(packet)
@@ -230,5 +245,8 @@ class MailTunnel(Ether2Any):
 
 if __name__ == '__main__':
 	mailtun = MailTunnel()
+	import cProfile
+	#p = cProfile.run('mailtun.run()')
+	#p.sort_stats('time', 'cum').print_stats(.5, 'init')
 	mailtun.run()
 
