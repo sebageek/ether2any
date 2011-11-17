@@ -5,7 +5,10 @@ Provides classes to encode text to arbitrary bases (base 2^n supported) and
 then to textual forms. """
 
 import math
-import random
+from random import randint, randrange
+import sys
+import time
+from collections import deque
 
 class DecodingException(Exception):
 	pass
@@ -348,19 +351,22 @@ class SpamGenerator(TextGenerator):
 	def encode(self, data):
 		""" Encode data: Traverse wordlists. Return spam-text. """
 		listBits = self.convToBits(data)
+		listBitsLen = len(listBits)
 		nextList = self.startList
 		pos = 0
 		text = ""
+		# for performance!
+		getList = self.getList
 		while nextList:
 			bit = 8
-			if pos < len(listBits):
+			if pos < listBitsLen:
 				bit = listBits[pos]
-			#print "Pos:", pos, "- Entering list", nextList, "- Bit:", bit
-			l = self.getList(nextList)
-			idx = pos < len(listBits) and listBits[pos] or self.base
-			t = l[bit]
-			text += t.word
-			nextList = t.nextLists[random.randint(0, len(t.nextLists)-1)]
+			l = getList(nextList)
+			idx = pos < listBitsLen and listBits[pos] or self.base
+			tok = l[bit]
+			#text.append(tok.word)
+			text += tok.word
+			nextList = tok.nextLists[randrange(0, len(tok.nextLists))]
 			if bit != 8:
 				pos += 1
 		return text
@@ -372,11 +378,12 @@ class SpamGenerator(TextGenerator):
 		""" Decode spam-text to original data. """
 		text = text.lstrip().replace("\r\n", "\n")
 		nextLists = [self.startList]
-		result = []
-		while len(text) > 0 and len(nextLists) > 0 and nextLists[0]:
+		result = deque()
+		findInList = self.findInList
+		while text != "" and len(nextLists) > 0 and nextLists[0]:
 			match = False
 			for listname in nextLists:
-				(match, bits, token) = self.findInList(text, listname)
+				(match, bits, token) = findInList(text, listname)
 				if match:
 					#print "matched value ", bits, "word", token.word
 					if bits != 8:
@@ -403,8 +410,10 @@ class SpamGenerator(TextGenerator):
 		sList = self.getList(listname)
 		for key in sList:
 			#print "\tTesting word: ", sList[key].word
-			if sList[key].word and (text.startswith(sList[key].word) or \
-				text.replace("\n", "").startswith(sList[key].word.replace("\n", ""))):
+			w = sList[key].word
+			if w and (text.startswith(w)):
+				#or \
+				#text.replace("\n", "", 1).startswith(sList[key].word.replace("\n", "", 1))):
 				# HACK: Newline matching problem, mail classes add extra newlines
 				#       ==> matching not possible
 				token = sList[key]
@@ -415,26 +424,34 @@ class SpamGenerator(TextGenerator):
 
 def main():
 	""" Main function, does en- and decoding test for testing purposes. """
-	data = "\xF2\x51\x92\x61\x9d\x1f\x0F\xb7\xaa\xc1"
-	for d in data:
-		print ord(d),
-	print ""
+	# data = "\xF2\x51\x92\x61\x9d\x1f\x0F\xb7\xaa\xc1"
+	#data = "".join(sys.argv[1:])
+	#for d in data:
+	#	print ord(d),
+	#print ""
+	#t = SpamGenerator()
+	#d = t.convToBits(data)
+	#e = t.convToNums(d)
+	#print d
+	#for a in e:
+	#	print ord(a),
+	#print ""
+	#msg = t.encode(data)
+	##print res, "\n"
+	#res = t.decode(msg)
+	#print 
+	#print d
+	#for d in data:
+	#	print ord(d),
+	#print ""
+	#print msg
 	t = SpamGenerator()
-	d = t.convToBits(data)
-	e = t.convToNums(d)
-	print d
-	for a in e:
-		print ord(a),
-	print ""
-	msg = t.encode(data)
-	#print res, "\n"
-	res = t.decode(msg)
-	print 
-	print d
-	for d in data:
-		print ord(d),
-	print ""
-	print msg
+	#data = "".join([chr(randint(0, 255)) for i in range(1500)])
+	#t.encode(data)
+	#return
+	msg = open("file.txt", "r").read()
+	t.decode(msg)
+	print t.encode("Hallo ihr beiden")
 
 if __name__ == '__main__':
 	main()
