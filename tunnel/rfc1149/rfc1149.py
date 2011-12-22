@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import base64
+import collections
 import logging
 import math
 import re
@@ -21,13 +22,34 @@ class TwittStreamHandler(tweepy.StreamListener):
 	def __init__(self, dev):
 		super(TwittStreamHandler, self).__init__()
 		self.dev = dev
-		self.fragments = {}
+		self.fragments = collections.defaultdict(str)
 	
 	def on_status( self, status ):
-		print '-' * 20
-		print "incoming:", unicode(status.text)
-		print "hex:", binToHexStr(status.text), len(status.text)
-		# reassemble messages, put them together if nessecary.
+		#print '-' * 20
+		#print "incoming:", unicode(status.text), "from", dir(status)
+		#print "hex:", binToHexStr(status.text), len(status.text)
+		# reassemble messages, write them to dev when complete
+		(isFragment, packetLen, packetId, packet) = None, None, None, None
+		try:
+			(isFragment, packetLen, packetId, packet) = UPHelper.decode(status.text)
+		except ValueError, e:
+			print "Could not decode tweet, omitting (Error was: %s).\n\tText was: %s" % (e, status.text)
+			raise
+			return
+		#print "Parsed packet:", (isFragment, packetLen, packetId)
+		#print "\t contents:", packet
+		if isFragment:
+			self.fragments[packetId] += packet
+			print " >+ Added fragment with id", packetId
+		else:
+			toSend = None
+			if self.fragments.has_key(packetId):
+				toSend = self.fragments[packetId] + packet
+			else:
+				toSend = packet
+			print " >> Received packet with id", packetId
+			print repr(toSend)
+			self.dev.write(toSend)
 	
 	def on_limit(self, track):
 		print "We got limited ", track
@@ -41,7 +63,7 @@ class TwittStreamHandler(tweepy.StreamListener):
 			sys.exit(2)
 		else:
 			print "At the moment there is no error-handling for this, so we just kill everything. Remember: This software doesn't even deserve the label 'alpha' ;)"
-			sys.exit(1)
+			#sys.exit(1)
 	
 	def on_timeout(self, status_code):
 		print "Got an timeout: ", status_code
@@ -51,15 +73,18 @@ class DownstreamThread(threading.Thread):
 	def __init__(self, dev, auth, endpoint):
 		threading.Thread.__init__(self)
 		self.auth = auth
+		self.api = tweepy.API(self.auth)
 		self.endpoint = endpoint
 		self.dev = dev
 		self.daemon = True
 	
 	def run(self):
 		stream = tweepy.Stream(auth=self.auth, listener=TwittStreamHandler(self.dev))
-		stream.userstream()
-		stream.filter(self.endpoint, None)
-		stream.sample()
+		user = self.api.get_user(self.endpoint)
+		print "Endpoint is", self.endpoint, "with id", user.id
+		stream.filter([user.id])
+		#stream.userstream()
+		#stream.sample()
 
 class RFC1149(Ether2Any):
 	def __init__(self):
@@ -113,14 +138,19 @@ if not Conf['twitter']['ACCESS_KEY']:
 			authConf.close()
 		self.auth.set_access_token(self.twitterConf['ACCESS_KEY'], self.twitterConf['ACCESS_SECRET'])
 		self.api = tweepy.API(self.auth)
+		self.me = self.api.me()
+		print "Logged in as %s" % (self.me.screen_name,)
 	
 	def _dec(self, s):
 		""" ... """
 		return "".join(map(lambda x: chr(x+48), reversed(s)))
 	
 	def sendToNet(self, packet):
-		for subPacket in UPHelper.encode(packet):
-			print subPacket
+		fragments = UPHelper.encode(packet)
+		print " >> Sending out %d bytes in %d tweet%s" % (len(packet), len(fragments), len(fragments)!=1 and "s" or "")
+		for fragment in fragments:
+			# FIXME: catch tweepy.error.TweepError
+			self.api.update_status(fragment)
 
 if __name__ == '__main__':
 	rfc = RFC1149()
