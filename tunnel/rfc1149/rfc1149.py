@@ -5,7 +5,6 @@ import base64
 import collections
 import logging
 import math
-import re
 import sys
 import threading
 import time
@@ -25,15 +24,19 @@ class TwittStreamHandler(tweepy.StreamListener):
 		self.fragments = collections.defaultdict(str)
 	
 	def on_status( self, status ):
-		#print '-' * 20
-		#print "incoming:", unicode(status.text), "from", dir(status)
-		#print "hex:", binToHexStr(status.text), len(status.text)
-		# reassemble messages, write them to dev when complete
+		""" On statis, decode and reassemble packet-status-texts. If complete, write them to the tun-dev. """
+		
+		# Twitter breaks some of the unicode characters, so we need to reassemble them.
+		# Note that through this packets containing the following bytes will get mangled:
+		# 00 5c 00 XX 00 XX 00 XX 00 5c 00 XX 00 XX 00 XX 00 5c 00 XX 00 XX 00 XX
+		# while XX is a number from ord('0') to ord('9')
+		sourcePacket = UPHelper.reassembleBrokenChars(status.text)
+		print "in uni:", repr(sourcePacket)
 		(isFragment, packetLen, packetId, packet) = None, None, None, None
 		try:
-			(isFragment, packetLen, packetId, packet) = UPHelper.decode(status.text)
+			(isFragment, packetLen, packetId, packet) = UPHelper.decode(sourcePacket)
 		except ValueError, e:
-			print "Could not decode tweet, omitting (Error was: %s).\n\tText was: %s" % (e, status.text)
+			print "Could not decode tweet, omitting (Error was: %s).\n\tText was: %s" % (e, repr(sourcePacket))
 			raise
 			return
 		#print "Parsed packet:", (isFragment, packetLen, packetId)
@@ -147,6 +150,8 @@ if not Conf['twitter']['ACCESS_KEY']:
 	
 	def sendToNet(self, packet):
 		fragments = UPHelper.encode(packet)
+		print "out raw:", repr(packet)
+		print "out frag:", repr(fragments[0])
 		print " >> Sending out %d bytes in %d tweet%s" % (len(packet), len(fragments), len(fragments)!=1 and "s" or "")
 		for fragment in fragments:
 			# FIXME: catch tweepy.error.TweepError

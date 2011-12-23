@@ -3,6 +3,7 @@
 
 import bitarray
 import random
+import re
 
 class UPHelper():
 	""" The Unicode Packet Helper
@@ -88,10 +89,49 @@ class UPHelper():
 		return fragments
 	
 	@staticmethod
+	def reassembleBrokenChars(packet):
+		""" Reassemble broken characters back to unicode.
+		
+		Twitter breaks some characters (currently known range is 0xd800 - 0xdfff)
+		into r"\XXX\XXX\XXX", X being octal numbers. These are actually strings,
+		so one unicodechar from the range gets broken up to 12 chars.
+		
+		Also _some_ of these are again converted into other chars.
+		\ud800\udc00 gets converted to \U00010000, so we need to guess-convert
+		these back. """
+		origPacket = packet
+		brokenChars = re.findall(r"(\\([0-9]{3})\\([0-9]{3})\\([0-9]{3}))", packet)
+		for broken in brokenChars:
+			#print "broken", broken, repr("".join(map(lambda x: chr(int(x, 8)), broken[1:])))
+			newChar = "".join(map(lambda x: chr(int(x, 8)), broken[1:])).decode("utf-8")
+			packet = packet.replace(broken[0], newChar)
+
+		# this is guesswork-derivation, its derived from these lines
+		# they represent our input and twitters output
+		# guesswork++: for the header, this is plausible, afterwards not.
+		# u"\ud900\udc00 \uda00\udcFF \udb00\uddFF"
+		# u'\U00050000 \U000900ff \U000d01ff"
+		# u"\ud800\udc00 \ud800\udcFF \ud800\uddFF \ud800\ude00 \ud800\udeff \ud800\udf00 \ud800\udfff"
+		# u'\U00010000 \U000100ff \U000101ff \U00010200 \U000102ff \U00010300 \U000103ff'
+		# u"\ud800\udc00 \ud801\udc00 \ud802\udc00 \ud803\udc00 \ud804\udc00 \ud805\udc00\ud806\udc00 \ud807\udc00 \ud808\udc00 \ud809\udc00 \ud80a\udc00 \ud80b\udc00 \ud80c\udc00 \ud80d\udc00 \ud80e\udc00 \ud80f\udc00 \ud810\udc00 \ud811\udc00 \ud812\udc00 \ud813\udc00"
+		# u'\U00010000 \U00010400 \U00010800 \U00010c00 \U00011000 \U00011400\U00011800 \U00011c00 \U00012000 \U00012400 \U00012800 \U00012c00 \U00013000 \U00013400 \U00013800 \U00013c00 \U00014000 \U00014400 \U00014800 \U00014c00'
+
+
+		for c in origPacket[11:]:
+			o = ord(c)
+			if o > 65535:
+				# -.-
+				a = unichr(0xd800 + ((o >> 10) - 64))
+				b = unichr(0xdc00 + (o & 1023))
+				packet = packet.replace(c, a+b)
+		return packet
+	
+	@staticmethod
 	def decode(packet):
 		""" Decodes an unicodestring (packet) back to header + data
 		
 		Returns: tupel(isFragmented, packetLen, packetId, data) """
+		
 		if len(packet) < 11:
 			raise ValueError("This is not a valid packet, header is too short (should be at least 11, is %d)" % len(packet))
 		header = bitarray.bitarray()
