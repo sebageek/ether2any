@@ -48,9 +48,14 @@ class UPHelper():
 		""" Generate list of packets with a header from data. """
 		packetId = random.randint(1, 2**32)
 		fragments = []
-		while len(data) > 280:
-			fragments.append(data[0:280])
-			data = data[280:]
+		while len(data) >= 280:
+			newData = data[0:280]
+			if newData[-1] == '\x00' and newData[-2] == '\x00' and len(newData) == 280:
+				fragments.append(data[0:278])
+				data = data[278:]
+			else:
+				fragments.append(newData)
+				data = data[280:]
 		if len(data) > 0:
 			fragments.append(data)
 		
@@ -60,9 +65,9 @@ class UPHelper():
 			lenX = len(fragment)
 			# pad packet if it is not long enouth / not aligned
 			if len(fragment) < 2*11:
-				fragment = fragment + "\x00" * (2*11-len(fragment))
+				fragment = fragment + "-" * (2*11-len(fragment))
 			if len(fragment) % 2 == 1:
-				fragment += "\x00"
+				fragment += "-"
 			
 			# write header (bits: 1 fragment, 9 length, 32 id)
 			header = bitarray.bitarray(1)
@@ -83,8 +88,16 @@ class UPHelper():
 				if h < 11:
 					val |= UPHelper.bitsToInt(header[h*4:(h+1)*4]) << 16
 					h += 1
+				# hack for (0x2026, 0x202f)
+				if val > 0x2026 and val < 0x202f:
+					val = val | (1<<16)
 				ret += unichr(val)
 				i += 2
+
+			# if the last characters are multiple \x00-bytes, twitter eats them!
+			# we already took care so there is space at the end for an extra dot
+			if ret[-1] == '\x00':
+				ret = ret + "."
 			fragments[y] = ret
 		return fragments
 	
@@ -119,7 +132,10 @@ class UPHelper():
 
 		for c in origPacket[11:]:
 			o = ord(c)
-			if o > 65535:
+			# (0x2027, 0x202f) are not displayed properly
+			if o > 0x12027 and o < 0x1202f:
+				packet.replace(c, unichr(o & (0xFFFF)))
+			elif o > 65535:
 				# -.-
 				a = unichr(0xd800 + ((o >> 10) - 64))
 				b = unichr(0xdc00 + (o & 1023))
@@ -149,15 +165,22 @@ class UPHelper():
 		rawData = map(lambda x: ord(x) & 0xFFFF, packet)
 		data = []
 		for p in rawData:
-			data.append(chr(p >> 8))
+			data.append(chr((p >> 8) & 255))
 			data.append(chr(p & 255))
-		data = "".join(data)
-		return (isFragmented, packetLen, packetId, data[:packetLen])
+		data = "".join(data[:packetLen])
+		return (isFragmented, packetLen, packetId, data)
 
 if __name__ == '__main__':
+	msg = u'\U000c0000\U00060800\u4500\u0344\U000f225d\U000b4000\U00054006\U0004ed2e\U00040a0a\u0a0a\U000c0a0a\u0a0b\x16\u9fba\u2c1d\u8297\uc02e\u662b\u8018U\u1ccc\x00\u0101\u080a\u49b1\ua6ad\u05d6\u3cd6\x00\u030c\u0a14\u0eff\uf074\u828b\u11e1\uc732\u7eaa\u1756\u4a7b\x00~\u6469\u6666\u6965\u2d68\u656c\u6c6d\u616e\u2d67\u726f\u7570\u2d65\u7863\u6861\u6e67\u652d\u7368\u6132\u3536\u2c64\u6966\u6669\u652d\u6865\u6c6c\u6d61\u6e2d\u6772\u6f75\u702d\u6578\u6368\u616e\u6765\u2d73\u6861\u312c\u6469\u6666\u6965\u2d68\u656c\u6c6d\u616e\u2d67\u726f\u7570\u3134\u2d73\u6861\u312c\u6469\u6666\u6965\u2d68\u656c\u6c6d\u616e\u2d67\u726f\u7570\u312d\u7368\u6131\x00\x0f\u7373\u682d\u7273\u612c\u7373\u682d\u6473\u7300\x00\u9d61\u6573\u3132\u382d\u6374\u722c\u6165\u7331\u3932\u2d63\u7472\u2c61\u6573\u3235\u362d\u6374\u722c\u6172\u6366\u6f75\u7232\u3536\u2c61\u7263\u666f'
+	print UPHelper.decode(msg)
+	sys.exit(0)
+	enc = UPHelper.encode(msg)
+	print enc
+	print UPHelper.decode(enc[-1])
 	msg = '\x00\x00\x08\x00E\x00\x00T\x00\x00@\x00@\x01\x12\x81\n\n\n\x0b\n\n\n\n\x08\x00\xd7Gt\xd2\x00\x01[U\xf1Nl=\x08\x00\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !"#$%&\'()*+,-./01234567'
-	msg = u'\U000c1011\U00061213\U00011415\U000a1617\U00031819\U00041a1b\U000a1c1d\U000a1e1f\U000c2021\u2223\U000c2425\u2627\u2829\u2a2b\u2c2d\u2e2f\u3031\u3233\u3435\u3637\u3839\u3a3b\u3c3d\u3e3f\u4041\u4243\u4445\u4647\u4849\u4a4b\u4c4d\u4e4f\u5051\u5253\u5455\u5657\u5859\u5a5b\u5c5d\u5e5f\u6061\u6263\u6465\u6667\u6869\u6a6b\u6c6d\u6e6f\u7071\u7273\u7475\u7677\u7879\u7a7b\u7c7d\u7e7f\u8081\u8283\u8485\u8687\u8889\u8a8b\u8c8d\u8e8f\u9091\u9293\u9495\u9697\u9899\u9a9b\u9c9d\u9e9f\ua0a1\ua2a3\ua4a5\ua6a7\ua8a9\uaaab\uacad\uaeaf\ub0b1\ub2b3\ub4b5\ub6b7\ub8b9\ubabb\ubcbd\ubebf\uc0c1\uc2c3\uc4c5\uc6c7\uc8c9\ucacb\ucccd\ucecf\ud0d1\ud2d3\ud4d5\ud6d7\ud8d9\udadb\udcdd\udedf\ue0e1\ue2e3\ue4e5\ue6e7\ue8e9\ueaeb\ueced\ueeef\uf0f1\uf2f3\uf4f5\uf6f7\uf8f9\ufafb\ufcfd\ufeff\x01\u0203\u0405\u0607\u0809\u0a0b\u0c0d\u0e0f\u1011\u1213\u1415\u1617\u1819\u1a1b\u1c1d\u1e1f\u2021\u2223\u2425\u2627'
-	msg = '\x00\x00\x08\x00E\x00\x04\x04\x00\x00@\x00@\x01\x0e\xd1\n\n\n\x0b\n\n\n\n\x08\x005f\x03\xec\x00\x01\xe7\xf7\xf1NR\xf2\r\x00\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7\xe8\xe9\xea\xeb\xec\xed\xee\xef\xf0\xf1\xf2\xf3\xf4\xf5\xf6\xf7\xf8\xf9\xfa\xfb\xfc\xfd\xfe\xff\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\x7f\x80\x81\x82\x83\x84\x85\x86\x87\x88\x89\x8a\x8b\x8c\x8d\x8e\x8f\x90\x91\x92\x93\x94\x95\x96\x97\x98\x99\x9a\x9b\x9c\x9d\x9e\x9f\xa0\xa1\xa2\xa3\xa4\xa5\xa6\xa7\xa8\xa9\xaa\xab\xac\xad\xae\xaf\xb0\xb1\xb2\xb3\xb4\xb5\xb6\xb7\xb8\xb9\xba\xbb\xbc\xbd\xbe\xbf\xc0\xc1\xc2\xc3\xc4\xc5\xc6\xc7\xc8\xc9\xca\xcb\xcc\xcd\xce\xcf\xd0\xd1\xd2\xd3\xd4\xd5\xd6\xd7\xd8\xd9\xda\xdb\xdc\xdd\xde\xdf\xe0\xe1\xe2\xe3\xe4\xe5\xe6\xe7'
+	msg = u'\U0004352c\U0006686d\u6163\U00092d73\U00026861\U0003312c\u756d\U000a6163\U00092d36\U00013440\U00086f70\u656e\u7373\u682e\u636f\u6d2c\u686d\u6163\u2d72\u6970\u656d\u6431\u3630\u2c68\u6d61\u632d\u7269\u7065\u6d64\u3136\u3040\u6f70\u656e\u7373\u682e\u636f\u6d2c\u686d\u6163\u2d73\u6861\u312d\u3936\u2c68\u6d61\u632d\u6d64\u352d\u3936\x00i\u686d\u6163\u2d6d\u6435\u2c68\u6d61\u632d\u7368\u6131\u2c75\u6d61\u632d\u3634\u406f\u7065\u6e73\u7368\u2e63\u6f6d\u2c68\u6d61\u632d\u7269\u7065\u6d64\u3136\u302c\u686d\u6163\u2d72\u6970\u656d\u6431\u3630\u406f\u7065\u6e73\u7368\u2e63\u6f6d\u2c68\u6d61\u632d\u7368\u6131\u2d39\u362c\u686d\u6163\u2d6d\u6435\u2d39\u3600\x00\u156e\u6f6e\u652c\u7a6c\u6962\u406f\u7065\u6e73\u7368\u2e63\u6f6d\x00\x15\u6e6f\u6e65\u2c7a\u6c69\u6240\u6f70\u656e\u7373\u682e\u636f\u6d00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00.'
+	print UPHelper.decode(msg)
+	sys.exit(0)
 	enc = UPHelper.encode(msg)
 	print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 	print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
