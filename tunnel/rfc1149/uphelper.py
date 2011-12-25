@@ -5,19 +5,8 @@ import bitarray
 import random
 import re
 
-class UPHelper():
-	""" The Unicode Packet Helper
-	
-	Twitter supports 140 chars, while a char can be a unicode
-	character. For a unicode character there are 2^20 possibilities.
-	For the sake of lazyness we put two bytes in each character, using
-	only 2^16. The remaining 4 bits can be used for metadata or whatever.
-	
-	The header in the metadata is as following:
-	<fragment bit (1 if packet is a fragment, 0 if last in row)>
-	<9 bits length of payload>
-	<32 bit random paket id greater than 0>"""
-
+class PHelper():
+	""" Packaging Helper baseclass """
 	@staticmethod
 	def intToBits(n, length):
 		""" Convert the number n to a bitarray of length. """
@@ -43,6 +32,21 @@ class UPHelper():
 		x = bin(val).replace("0b", "")
 		return "0" * (leading-len(x)) + x
 	
+
+class UPHelper(PHelper):
+	""" The Unicode Packaging Helper
+	
+	Twitter supports 140 chars, while a char can be a unicode
+	character. For a unicode character there are 2^20 possibilities.
+	For the sake of lazyness we put two bytes in each character, using
+	only 2^16. The remaining 4 bits can be used for metadata or whatever.
+	
+	The header in the metadata is as following:
+	<fragment bit (1 if packet is a fragment, 0 if last in row)>
+	<9 bits length of payload>
+	<32 bit random paket id greater than 0>"""
+
+
 	@staticmethod
 	def encode(data):
 		""" Generate list of packets with a header from data. """
@@ -170,30 +174,91 @@ class UPHelper():
 		data = "".join(data[:packetLen])
 		return (isFragmented, packetLen, packetId, data)
 
+class DPHelper(PHelper):
+	""" The Dump Packaging Helper
+	
+	As twitters unicodehandling is quiet random, this is an
+	attempt to a more reliable en-/decoding. It uses
+	the first char for an unicode header, the remaining 138
+	chars are used for the networkpacket in plain.
+	
+	Header: 
+	<1 bit, True if fragment>
+	<8 bit, lenght of packet>
+	<11 bit, packet id [1, 2047]>
+	"""
+	
+	@staticmethod
+	def encode(data):
+		packetId = random.randint(1, 2**11)
+		fragments = []
+		while len(data) >= 139:
+			newData = data[0:139]
+			if newData[-1] == '\x00' and newData[-2] == '\x00' and len(newData) == 139:
+				fragments.append(data[0:138])
+				data = data[138:]
+			else:
+				fragments.append(newData)
+				data = data[139:]
+		if len(data) > 0:
+			fragments.append(data)
+		
+		# convert to twitter message
+		for y in range(len(fragments)):
+			fragment = fragments[y]
+			lenX = len(fragment)
+			
+			# write header (bits: 1 fragment, 8 length, 11 id)
+			header = bitarray.bitarray(1)
+			# write fragment-bit
+			header[0] = not (y+1 == len(fragments))
+			# append packet length
+			header.extend(DPHelper.intToBits(lenX, 8))
+			# add packet id
+			header.extend(DPHelper.intToBits(packetId, 11))
+			ret = unichr(DPHelper.bitsToInt(header)) + "".join([unichr(ord(i)) for i in fragment])
+
+			# if the last characters are multiple \x00-bytes, twitter eats them!
+			# we already took care so there is space at the end for an extra dot
+			if ret[-1] == '\x00' and ret[-2] == '\x00':
+				ret = ret + "."
+			fragments[y] = ret
+		return fragments
+	
+	@staticmethod
+	def decode(packet):
+		""" Decodes an unicodestring (packet) back to header + data
+		
+		Returns: tupel(isFragmented, packetLen, packetId, data) """
+		
+		if len(packet) < 2:
+			raise ValueError("This is not a valid packet, header is too short (should be at least 11, is %d)" % len(packet))
+		header = bitarray.bitarray(DPHelper.toBin(ord(packet[0]), 20))
+		isFragmented = header[0]
+		
+		packetLen = DPHelper.bitsToInt(header[1:9])
+		packetId = DPHelper.bitsToInt(header[9:])
+		if packetId == 0:
+			raise ValueError("Packet id cannot be 0")
+		
+		data = "".join(map(lambda x: chr(ord(x)), packet[1:packetLen+1]))
+		return (isFragmented, packetLen, packetId, data)
+
 if __name__ == '__main__':
-	msg = u'\U000c0000\U00060800\u4500\u0344\U000f225d\U000b4000\U00054006\U0004ed2e\U00040a0a\u0a0a\U000c0a0a\u0a0b\x16\u9fba\u2c1d\u8297\uc02e\u662b\u8018U\u1ccc\x00\u0101\u080a\u49b1\ua6ad\u05d6\u3cd6\x00\u030c\u0a14\u0eff\uf074\u828b\u11e1\uc732\u7eaa\u1756\u4a7b\x00~\u6469\u6666\u6965\u2d68\u656c\u6c6d\u616e\u2d67\u726f\u7570\u2d65\u7863\u6861\u6e67\u652d\u7368\u6132\u3536\u2c64\u6966\u6669\u652d\u6865\u6c6c\u6d61\u6e2d\u6772\u6f75\u702d\u6578\u6368\u616e\u6765\u2d73\u6861\u312c\u6469\u6666\u6965\u2d68\u656c\u6c6d\u616e\u2d67\u726f\u7570\u3134\u2d73\u6861\u312c\u6469\u6666\u6965\u2d68\u656c\u6c6d\u616e\u2d67\u726f\u7570\u312d\u7368\u6131\x00\x0f\u7373\u682d\u7273\u612c\u7373\u682d\u6473\u7300\x00\u9d61\u6573\u3132\u382d\u6374\u722c\u6165\u7331\u3932\u2d63\u7472\u2c61\u6573\u3235\u362d\u6374\u722c\u6172\u6366\u6f75\u7232\u3536\u2c61\u7263\u666f'
-	print UPHelper.decode(msg)
-	sys.exit(0)
-	enc = UPHelper.encode(msg)
-	print enc
-	print UPHelper.decode(enc[-1])
 	msg = '\x00\x00\x08\x00E\x00\x00T\x00\x00@\x00@\x01\x12\x81\n\n\n\x0b\n\n\n\n\x08\x00\xd7Gt\xd2\x00\x01[U\xf1Nl=\x08\x00\x08\t\n\x0b\x0c\r\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f !"#$%&\'()*+,-./01234567'
-	msg = u'\U0004352c\U0006686d\u6163\U00092d73\U00026861\U0003312c\u756d\U000a6163\U00092d36\U00013440\U00086f70\u656e\u7373\u682e\u636f\u6d2c\u686d\u6163\u2d72\u6970\u656d\u6431\u3630\u2c68\u6d61\u632d\u7269\u7065\u6d64\u3136\u3040\u6f70\u656e\u7373\u682e\u636f\u6d2c\u686d\u6163\u2d73\u6861\u312d\u3936\u2c68\u6d61\u632d\u6d64\u352d\u3936\x00i\u686d\u6163\u2d6d\u6435\u2c68\u6d61\u632d\u7368\u6131\u2c75\u6d61\u632d\u3634\u406f\u7065\u6e73\u7368\u2e63\u6f6d\u2c68\u6d61\u632d\u7269\u7065\u6d64\u3136\u302c\u686d\u6163\u2d72\u6970\u656d\u6431\u3630\u406f\u7065\u6e73\u7368\u2e63\u6f6d\u2c68\u6d61\u632d\u7368\u6131\u2d39\u362c\u686d\u6163\u2d6d\u6435\u2d39\u3600\x00\u156e\u6f6e\u652c\u7a6c\u6962\u406f\u7065\u6e73\u7368\u2e63\u6f6d\x00\x15\u6e6f\u6e65\u2c7a\u6c69\u6240\u6f70\u656e\u7373\u682e\u636f\u6d00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00.'
-	print UPHelper.decode(msg)
-	sys.exit(0)
-	enc = UPHelper.encode(msg)
+	enc = DPHelper.encode(msg)
 	print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 	print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 	print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-	print enc
+	print repr(enc)
 	ret = ""
 	for e in enc:
-		e = UPHelper.decode(e)
-		print e[0:3]
-		print e[3]
+		e = DPHelper.decode(e)
 		ret += e[3]
-	m = UPHelper.decode(UPHelper.encode(msg)[0])
-	#print m
+	print "broken", repr(DPHelper.encode(msg)[0])
+	m = DPHelper.decode(DPHelper.encode(msg)[0])
+	print repr(msg)
+	print repr(ret)
 	if ret == msg:
 		print "success"
 	else:
@@ -201,12 +266,7 @@ if __name__ == '__main__':
 	print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 	print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
 	print "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-	print UPHelper.decode(UPHelper.encode("X"*281)[0])
-	print UPHelper.decode(UPHelper.encode("X"*281)[1])
-	#msg = "".join([chr(i) for i in range(256)])
-	#msg += "".join([chr(i) for i in range(256)])
-	#p = UPHelper.encode(msg)
-	#print repr(msg)
-	#for x in p:
-	#	print UPHelper.decode(x)
+	print DPHelper.decode(DPHelper.encode("X"*281)[0])
+	print DPHelper.decode(DPHelper.encode("X"*281)[1])
+	print DPHelper.decode(DPHelper.encode("X"*281)[2])
 
