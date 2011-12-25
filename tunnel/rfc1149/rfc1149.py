@@ -9,40 +9,33 @@ import sys
 import threading
 import time
 import tweepy
-from uphelper import UPHelper
 
 sys.path.append("../../../")
 
 from conf import Conf
 from ether2any import Ether2Any
-from ether2any.helper import getDstMacFromPkt, isBroadcast, binToHexStr
 
 class TwittStreamHandler(tweepy.StreamListener):
-	def __init__(self, dev, debug=False):
+	def __init__(self, dev, coder, debug=False):
 		super(TwittStreamHandler, self).__init__()
 		self.dev = dev
 		self.fragments = collections.defaultdict(str)
 		self.debug = debug
+		self.coder = coder
 	
 	def on_status( self, status ):
 		""" On statis, decode and reassemble packet-status-texts. If complete, write them to the tun-dev. """
 		
-		# Twitter breaks some of the unicode characters, so we need to reassemble them.
-		# Note that through this packets containing the following bytes will get mangled:
-		# 00 5c 00 XX 00 XX 00 XX 00 5c 00 XX 00 XX 00 XX 00 5c 00 XX 00 XX 00 XX
-		# while XX is a number from ord('0') to ord('9')
-		sourcePacket = UPHelper.reassembleBrokenChars(status.text)
+		sourcePacket = status.text
 		if self.debug:
 			print "in uni:", repr(sourcePacket)
 		(isFragment, packetLen, packetId, packet) = None, None, None, None
 		try:
-			(isFragment, packetLen, packetId, packet) = UPHelper.decode(sourcePacket)
+			(isFragment, packetLen, packetId, packet) = self.coder.decode(sourcePacket)
 		except ValueError, e:
 			print "Could not decode tweet, omitting (Error was: %s).\n\tText was: %s" % (e, repr(sourcePacket))
 			raise
 			return
-		#print "Parsed packet:", (isFragment, packetLen, packetId)
-		#print "\t contents:", packet
 		if isFragment:
 			self.fragments[packetId] += packet
 			print " >+ Added fragment with id", packetId
@@ -52,10 +45,13 @@ class TwittStreamHandler(tweepy.StreamListener):
 				toSend = self.fragments[packetId] + packet
 			else:
 				toSend = packet
-			print " >> Received packet with id", packetId
-			if self.debug:
-				print repr(toSend)
-			self.dev.write(toSend)
+			if toSend == '':
+				print " >! Received packet with id", packetId, "is BROKEN"
+			else:
+				print " >> Received packet with id", packetId
+				if self.debug:
+					print repr(toSend)
+				self.dev.write(toSend)
 	
 	def on_limit(self, track):
 		print "We got limited ", track
@@ -78,17 +74,18 @@ class TwittStreamHandler(tweepy.StreamListener):
 
 # TODO: Thread is not needed, tweepy has its own threading. remove it
 class DownstreamThread(threading.Thread):
-	def __init__(self, dev, auth, endpoint, debug=False):
+	def __init__(self, dev, coder, auth, endpoint, debug=False):
 		threading.Thread.__init__(self)
 		self.debug = debug
 		self.auth = auth
+		self.coder = coder
 		self.api = tweepy.API(self.auth)
 		self.endpoint = endpoint
 		self.dev = dev
 		self.daemon = True
 	
 	def run(self):
-		stream = tweepy.Stream(auth=self.auth, listener=TwittStreamHandler(self.dev, self.debug))
+		stream = tweepy.Stream(auth=self.auth, listener=TwittStreamHandler(self.dev, self.coder, self.debug))
 		user = self.api.get_user(self.endpoint)
 		print "Endpoint is", self.endpoint, "with id", user.id
 		stream.filter([user.id])
@@ -99,6 +96,7 @@ class RFC1149(Ether2Any):
 		
 		self.debug = debug
 		network = Conf.get("network", {'mtu': 1400})
+		self.coder = Conf.get("coder", None)
 		self.twitterConf = Conf.get("twitter", None)
 		self.endpoint = self.twitterConf['endpoint']
 		if not self.endpoint:
@@ -108,7 +106,7 @@ class RFC1149(Ether2Any):
 		self.dev.up()
 
 		self._setupTwitter()
-		self.downstream = DownstreamThread(dev=self.dev, auth=self.auth, endpoint=self.endpoint, debug=self.debug)
+		self.downstream = DownstreamThread(dev=self.dev, coder=self.coder, auth=self.auth, endpoint=self.endpoint, debug=self.debug)
 		self.downstream.start()
 	
 	def _requestTwitterTokens(self):
@@ -154,7 +152,7 @@ if not Conf['twitter']['ACCESS_KEY']:
 		return "".join(map(lambda x: chr(x+48), reversed(s)))
 	
 	def sendToNet(self, packet):
-		fragments = UPHelper.encode(packet)
+		fragments = self.coder.encode(packet)
 		if self.debug:
 			print "out raw:", repr(packet)
 			print "out frag:", repr(fragments)
@@ -180,7 +178,7 @@ if not Conf['twitter']['ACCESS_KEY']:
 				print " >! ERROR - Either connection refused or limited. Not sent."
 
 if __name__ == '__main__':
-	rfc = RFC1149()
+	rfc = RFC1149(debug=True)
 	print "Starting RFC1149 ip-over-twitter service..."
 	rfc.run()
 
