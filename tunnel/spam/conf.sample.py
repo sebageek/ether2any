@@ -75,6 +75,17 @@ Conf = {
 			# list of all allowed recipients, None for everyone
 			# e.g. ["foo@somedomain.de", "bar@someserver.de"]
 			'allowTo':			None,
+			
+			# accept traffic (set to False, if only used as ARP-Server)
+			# Note: Nevertheless a tapdevice will be created and configured
+			'acceptTraffic':	False,
+		},
+	
+	# arp server, returns mac and mail addresses to arp-requests
+	'arpserv':
+		{
+			# timeout in seconds, when to throw old arps away
+			'timeout':
 		},
 }
 

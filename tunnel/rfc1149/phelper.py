@@ -210,15 +210,17 @@ class DPHelper(PHelper):
 	@staticmethod
 	def textEncode(t):
 		return t.replace("&",  "&amp;") \
-		        .replace("\r", "&#13;")
+				.replace("\n", "&#10;") \
+				.replace("\r", "&#13;")
 
 	@staticmethod
 	def textDecode(t):
-		return t.replace("&lt;",  "<") \
-		        .replace("&gt;",  ">") \
-				.replace("&#13",  "\r")\
-				.replace("&amp;", "&") \
-
+		return t.replace("&lt;",  "<")   \
+				.replace("&gt;",  ">")   \
+				.replace("&#10;",  "\n") \
+				.replace("&#13;",  "\r") \
+				.replace("&amp;", "&")
+	
 	@staticmethod
 	def encode(data):
 		# twitter encodes <>'s ==> we need to encode & to distinguish between &lt; and an encoded etc.

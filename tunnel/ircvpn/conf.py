@@ -24,7 +24,7 @@ Conf = {
 		
 	# ======== IRC settings ========
 	# irc-server to use
-	'ircserver': ('testine.someserver.de', 6667),
+	'ircserver': ('blackmesa.someserver.de', 6667),
 	
 	# broadcast domain (where to meet other clients)
 	'broadcastchan': '#broadcastchan',
@@ -61,5 +61,5 @@ Conf = {
 	# ======== misc settings ========
 	# executed after being connected to the server
 	# %s will be replaces with the device name
-	'postConnectCmd': '/sbin/dhclient -v %s',
+	#'postConnectCmd': '/sbin/dhclient -v %s',
 }
