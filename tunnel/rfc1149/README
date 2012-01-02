@@ -1,0 +1,8 @@
+This is a helper for RFC1149 based networks. It will ask for every
+packet if it should be sent or not.
+
+THIS IS NOT COMPLETE! Until now it is disfunctional (no printer support).
+
+You need
+ * tesseract for ocr
+ * imagemagick
