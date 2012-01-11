@@ -6,7 +6,7 @@ import logging
 from pytap import TapDevice
 
 class Ether2Any:
-	""" Baseclass for writing arbitrary Ethernet/IP Tunnels using TUN/TAP device.
+	""" Baseclass for writing arbitrary Ethernet/IP tunnel using a TUN/TAP device.
 	
 	This class handles a TUN/TAP devices and runs a select loop for it and,
 	if given, a set of sockets. To use this class at least sendToNet() has

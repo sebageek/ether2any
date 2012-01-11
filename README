@@ -1,0 +1,38 @@
+Ether2Any and PyTap
+===================
+Ether2Any is a python baseclass for writing arbitrary Ethernet/IP tunnel using
+a TUN/TAP device.
+
+PyTap is a python class for handling a TUN/TAP device. It exposes read/write
+and abstracts a bit of the network configuration.
+
+Installation and requirements
+=============================
+
+Just put it somewhere and import it. For PyTaps network configuration
+functions you need /sbin/ifconfig.
+
+
+How to write an Ethernet/IP tunnel
+==================================
+Writing a tunnel with this is rather easy. All you have to do create a class
+inheriting from Ether2Any and implement the method sendToNet(). sendToNet()
+will be called for each incoming network packet. If you add extra sockets
+to the select loop via addSocket, sendToDev() needs to be implemented,
+which gets the socket on which new data is ready. If you don't want to rely
+on select you are free to pass self.dev (which is a PyTap() instance) and
+call dev.write() whenever you like. Note that if you write invalid network
+packets on it, you might get an exception.
+
+Afterwards you can instanciate your class and call the run() method to start
+your tunnel.
+
+
+What could be done
+==================
+ * At the beginning of each packet there are 
+ * Builtin packet aggregation would be nice
+ * Various FIXMEs/TODOs
+ * Replace ifconfig with the ip utility
+ * Add plugin architecture to pytap for traffic mangling
+ * setuptools/pypi dance
