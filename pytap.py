@@ -14,13 +14,15 @@ class TapDevice:
 	DEVPATH   = "/dev/net/tun"
 	_ifreq = "16sh"
 
-	def __init__(self, name='', tap=True, conf=None):
+	def __init__(self, name='', tap=True, conf=None, stripHeader=True):
 		""" Constructor for the device.
 		
 		name - the device name, use a %d for a generated device numer
 		tap  - if this device should be a tap device
 		conf - conf to pass to the ifconfig function of this class
 		       (if None ifconfig() won't be called)
+		stripHeader - strips the first 4 bytes, they don't belong to
+		              the actual network traffic ("\x00\x00\x08\x00")
 		"""
 		self._mode = (tap and self.IFF_TAP) or self.IFF_TUN
 		self._fd = None
@@ -29,6 +31,7 @@ class TapDevice:
 		self._mac = None
 		self._mtu = 1500
 		self.conf = conf
+		self._stripHeader = stripHeader
 		
 		if name == '':
 			self._nametpl = (tap and "tap%d") or "tun%d"
@@ -98,10 +101,14 @@ class TapDevice:
 			# don't forget the ethernet frame (not included in MTU)
 			readSize += 18
 		data = os.read(self._fd, self._mtu)
+		if self._stripHeader:
+			data = data[4:]
 		return data
 	
 	def write(self, data):
 		""" Write a packet to the device """
+		if self._stripHeader:
+			data= "\x00\x00\x08\x00" + data
 		os.write(self._fd, data)
 	
 	def close(self):

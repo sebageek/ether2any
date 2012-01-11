@@ -74,8 +74,8 @@ class UdevReader(threading.Thread):
 		calcedChecksum = crc32(packet) & 0xffffffff
 		if checksum != calcedChecksum:
 			print " !! Checksum failed (was 0x%08x, should be 0x%08x)" % (checksum, calcedChecksum)
-			return Falsea
-		self.dev.write("\x00\x00\x08\x00" + packet)
+			return False
+		self.dev.write(packet)
 		return True
 	
 	def run(self):
@@ -122,9 +122,9 @@ class RFC1149(Ether2Any):
 		print packet
 	
 	def sendToNet(self, packet):
-		print "packet", repr(packet[4:])
-		scp = IP(packet[4:])
-		checksum = crc32(packet[4:]) & 0xffffffff
+		print "packet", repr(packet)
+		scp = IP(packet)
+		checksum = crc32(packet) & 0xffffffff
 		checksumStr = "%08x" % checksum
 		hexRepr = " ".join(map(lambda x: "%02x" % ord(x), packet[4:])) + " " + " ".join(map(lambda x: checksumStr[x:x+2], range(0, len(checksumStr), 2)))
 		print " ?>", scp.summary(), " -- hex len", len(hexRepr), "checksum 0x%08x" % checksum
