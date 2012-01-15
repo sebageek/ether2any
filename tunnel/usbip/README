@@ -1,5 +1,38 @@
+USBIP
+=====
+This tunnel implements IP over USB sticks, writing each packet as a single file
+onto the USB stick.
 
-Installation
-============
-You need
+Installation and requirements
+=============================
  * python-pyudev
+
+In conf.py you need to configure a mountpoint and udev attributes, so that the
+USB stick can be found. If you are unsure about the udev attibutes use the
+listDevices.py script and plug in your USB stick. It will show you all
+available attributes.
+
+On all participating clients the 'usbNetworkDir' needs to be the same, so
+newly written network packets can be found.
+
+How it works
+============
+All outgoing network packets are written in plain into a file into 
+'usbNetworkDir' onto the USB stick. If the stick is not present, the packets
+will be queued until the USB stick is mounted. If a USB stick is mounted (and
+generated a UDEV-event), incoming traffic will be read from 'usbNetworkDir'.
+After reading a file (network packet) the file is deleted.
+
+Unmounting is kind of a problem: Even if a sync is executed and finished 
+properly, the stick might still be processing data, so pay attention to any
+signals or lights attached to the stick.
+
+What could be done
+==================
+ * implement support for multiple USB sticks
+
+Licensing
+=========
+Written by Sebastian Lohff <seba@seba-geek.de>
+Published under the GPLv3 or later
+
