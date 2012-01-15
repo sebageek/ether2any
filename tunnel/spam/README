@@ -1,0 +1,56 @@
+Spam
+====
+This tunnel implements Ethernet/IP over spam mails. Before the data is going
+out it is encoded to look like an ordinary spam mail.
+
+A friend told me about a "Network Protocols and Architectures" lecture,
+a course given at TU-Berlin, featuring this task as a "cristmas homework",
+showing a slide from Dan Kaminsky talking about this idea for bypassing the
+Great Firewall of China.
+
+
+Installation and requirements
+=============================
+You need either an e-mail account reachable via IMAP or a MX record pointing
+to your server. Configuration is done via conf.py. Currently the other side
+of the connection needs to be specified as 'mailTo' (see conf.py).
+
+
+How it works
+============
+Each outgoing network packet is encoded to text looking like spam mails. The
+encoder/decoder can easily be replaced by something else but all clients need
+to have the same dictionary/language. The packet is split up into 3bit entities
+and then decoded into words using the current dictionary. An Ethernet packet
+(mtu 1500 bytes) is blown up to 74kb of spam text.
+
+Every packet is currently mailed to the configured 'mailTo' address. Incoming
+messages are fetched via imap or, if running as an smtpd, directly parsed on
+delivery.
+
+
+Multiple Clients
+================
+Having support for multiple clients would be an awesome thing! Currently only
+point to point connections are available. The problem with having multiple
+clients is, that somehow a client needs to know where another client can be
+found. Many concepts exist to solve this problem. The straight forward approach
+of a single authorative server would work but introduces a single point of
+failure, making the network vulnerable to censorship and server failures.
+
+As said in the section below: This needs to be implemented. ;)
+
+
+What could be done
+==================
+ * allow the spam tunnel to run as an IP tunnel, configurable via config
+ * implement support for multiple clients
+ * support exchange of encoding dictionary prior to sending/receiving data
+ * add support to send mails directly via smtp, not via a specific smtp server
+
+
+Licensing
+=========
+Written by Sebastian Lohff <seba@seba-geek.de>
+Published under the GPLv3 or later
+
