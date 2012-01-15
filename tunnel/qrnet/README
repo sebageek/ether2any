@@ -1,0 +1,46 @@
+QRNet
+=====
+QRNet, sometimes also known as "The Clacks", is an ethernet tunnel providing an
+opto-uncoupled ether via two laptops with webcams reading qr-codes from each
+others display.
+
+This tunnel was written at the Chaos Communication Camp (CCCamp). Until day 2
+there was no stable internet connection at our part of the camp and wifi was
+not reliable, but the guys across the road had a pretty decent connection.
+Sadly no two beamers could be acquired and QRNet did not save the day.
+Nevertheless the code has been finnished and a 90cm connection has been
+established at camp site.
+
+
+Installation and requirements
+=============================
+ * python-opencv
+ * python-zbar
+ * python-qrencode
+ * python-gtk
+ * ether2any
+ * 2 displays
+ * 2 webcams, videocams or other optical qrcode scanners
+
+Configuration can be done in the conf.py. After starting the tunnel you need to
+adjust the webcams. The percent bar at the bottom of the screen will show how
+many qrcodes could be read per time interval.
+
+
+How it works
+============
+The tunnel accesses the laptops webcam and tries to read a qrcode from each
+received image. If it can be decoded, it is written as network traffic to the
+interface as incoming traffic. Outgoing traffic is displayed as qrcodes on the
+laptop's screen.
+
+
+What could be done
+==================
+ * allow QRNet to run as IP tunnel, configurable via config
+
+
+Licensing
+=========
+Published under the GPLv3 or later
+
