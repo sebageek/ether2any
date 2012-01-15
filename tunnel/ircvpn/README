@@ -1,0 +1,77 @@
+IrcVPN - Irc Virtual Public Network
+===================================
+This is an ethernet tunnel providing basic hubbed or switchet networks via irc.
+
+Warning: If you use this software on a "real" (read: not your own) network:
+          1. You might run into various flood protections
+		  2. Your IRC-OP might kill you for that
+
+Furthermore: All of your data will go kind-of plaintext over an Irc-channel.
+             While this is a rather uncommon way of ip transit, everybody who
+			 is able to join the channel might be able to eavesdrop.
+
+Installation and requirements
+=============================
+ * python-irclib
+ * ether2any
+
+For configuration take a look at conf.py, it has some comments to give you a
+hint of what this switch will do. Some of the security settings are rather
+untested, keep that in mind. After configuration, start the tunnel with
+python ircvpn.py. A tap-device will open and the tunnel should be ready to run.
+
+What it does and how it works
+=============================
+IrcVPN uses an ircchannel as its transport medium. When starting this tunnel,
+it makes a connection to the configured irc-server, joins a channel and starts
+pushing all outgoing network traffic (base64 encoded with a small header) to
+that channel. The nick will be a combination of the configured prefix and
+the TAP interfaces mac-address.
+
+There are two network-modes available:
+
+.Hubbed Network
+In a hubbed network topology all the clients share one broadcast medium, the
+irc channel.
+
+.Switchet Network
+In a switched network topology still all the clients join the irc channel and
+use it for broadcast messages but unicast traffic goes directly to the user
+it is intended for, as it is sent to the nickprefix-macaddress combination.
+Wether the user with the specific mac actually IS in the network is not
+checked.
+
+Flood protection is kind of the biggest issue for irc as ether: After a
+configured amount of messages most irc-servers queue the incoming messages
+and send them out as one per second. If the send-queue is overflowed the user
+gets kicked from the server. So this tunnel is not going to perform very well
+on normal servers out there. Setting up an own server, the flood protection CAN
+be turned off but irc-server with configurable flood protections tend to allow
+flooding only in channels and only if the user is either voiced, half-op or op.
+This is where voicebot.py comes in: The voicebot voices everyone who joins the
+channel and utters a certain phrase. Therefore it is kind of ensured that every
+bot has the right to flood the ether as much as it wants with network packets.
+
+Ircs right management can always be used to mute, rate-limit or remove spamming
+or otherwise unwanted clients. 
+
+Header Format
+=============
+<fragmentation flag><packet id> <base64 encoded message>
+
+The *fragmentation flag* can be either of o, b, c, e. *o* stands for oneliner,
+which means that afterwards there is a complete ethernet frame (no
+fragmentation). *b*, *c*, *e* stand for begin, continue, end and mark packets
+which are broken into several pieces (as of irc does not support infinit line
+length). 
+
+The packet id is just a randon generated number between 0, 99999 (incl.).
+
+
+What could be done
+==================
+ * replace base64 with something more fitting for Irc
+ * test security settings
+ * find static linkable irc server, patch flood protection out of it
+ * VVLAN - a Virtual VLAN between irc-channels/servers
+
