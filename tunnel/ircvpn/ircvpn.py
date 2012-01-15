@@ -16,10 +16,6 @@ import logging
 import subprocess
 from ether2any.helper import getDstMacFromPkt, isBroadcast, binToHexStr
 
-# TODO
-#	replace base64 with something better
-#	write switching part
-
 class IrcVPN(Ether2Any):
 	headerlen = 1 + 5 + 1 # flag + number + whitespace
 	pkgre = re.compile("^([a-zA-Z])(\d{5}) (.*)$")
