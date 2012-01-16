@@ -1,25 +1,29 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2011 Sebastian Lohff <seba@seba-geek.de>
+# Licensed under GPL v3 or later
 
-import sys
-import os
-import re
-import time
-import struct
 import base64
-import StringIO
+import gobject
+import gtk
+import mutex
 import opencv
 from opencv import highgui, adaptors
-import qrencode
-import zbar
+import os
 from PIL import Image
-import gtk
-import gobject
-import urllib
-import socket
-import subprocess
+import qrencode
 import Queue
+import re
+import socket
+import struct
+import StringIO
+import subprocess
+import sys
 import threading
-import mutex
+import time
+import urllib
+import zbar
 
 sys.path.append("../../../")
 from ether2any import Ether2Any

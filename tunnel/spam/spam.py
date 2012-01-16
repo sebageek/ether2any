@@ -1,21 +1,25 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2011 Sebastian Lohff <seba@seba-geek.de>
+# Licensed under GPL v3 or later
 
-import time
 import asyncore
+import email
+from email.mime.text import MIMEText
+import imaplib
 import select
 import smtpd
 import smtplib
-import imaplib
-import email
-from email.mime.text import MIMEText
+import time
 import threading
 import sys
 sys.path.append("../../../")
 
-from wtbase import SpamGenerator, DecodingException
 from ether2any import Ether2Any
 from ether2any.helper import getDstMacFromPkt, isBroadcast, binToHexStr
 from conf import Conf, ENCRYPTION_NONE, ENCRYPTION_STARTTLS, ENCRYPTION_SSL
+from wtbase import SpamGenerator, DecodingException
 
 # Todo
 #	Error checking at some places

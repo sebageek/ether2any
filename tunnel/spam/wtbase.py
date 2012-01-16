@@ -1,14 +1,18 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2011 Sebastian Lohff <seba@seba-geek.de>
+# Licensed under GPL v3 or later
 
 """ wtbase - what the base
 Provides classes to encode text to arbitrary bases (base 2^n supported) and
 then to textual forms. """
 
+from collections import deque
 import math
 from random import randint, randrange
 import sys
 import time
-from collections import deque
 
 class DecodingException(Exception):
 	pass

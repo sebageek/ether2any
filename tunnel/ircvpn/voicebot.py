@@ -1,4 +1,9 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2011 Sebastian Lohff <seba@seba-geek.de>
+# Licensed under GPL v3 or later
+
 import irclib
 from conf import Conf
 

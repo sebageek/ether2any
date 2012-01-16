@@ -1,5 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2011 Sebastian Lohff <seba@seba-geek.de>
+# Licensed under GPL v3 or later
 
 import base64
 import collections
@@ -11,7 +14,6 @@ import time
 import tweepy
 
 sys.path.append("../../../")
-
 from conf import Conf
 from ether2any import Ether2Any
 
@@ -24,7 +26,7 @@ class TwittStreamHandler(tweepy.StreamListener):
 		self.coder = coder
 	
 	def on_status( self, status ):
-		""" On statis, decode and reassemble packet-status-texts. If complete, write them to the tun-dev. """
+		""" On status, decode and reassemble packet-status-texts. If complete, write them to the tun-dev. """
 		
 		sourcePacket = status.text
 		if self.debug:

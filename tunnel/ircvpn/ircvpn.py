@@ -1,19 +1,23 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2011 Sebastian Lohff <seba@seba-geek.de>
+# Licensed under GPL v3 or later
 
 import sys
 sys.path.append("../../../")
 
-from ether2any import Ether2Any
+
+import base64
+import irclib
+import logging
+import re
+import random
+import subprocess
+import time
 
 from conf import Conf
-import time
-import irclib
-import re
-import base64
-import random
-import logging
-import subprocess
+from ether2any import Ether2Any
 from ether2any.helper import getDstMacFromPkt, isBroadcast, binToHexStr
 
 class IrcVPN(Ether2Any):

@@ -1,5 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+#
+# Copyright (C) 2011 Sebastian Lohff <seba@seba-geek.de>
+# Licensed under GPL v3 or later
 
 import logging
 import os
@@ -11,9 +14,9 @@ import threading
 import time
 
 sys.path.append("../../../")
-
 from conf import Conf
 from ether2any import Ether2Any
+
 class USBWriter(threading.Thread):
 	def __init__(self, dev, networkQueue, writeLock):
 		threading.Thread.__init__(self)
