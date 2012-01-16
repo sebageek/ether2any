@@ -12,7 +12,7 @@ Conf = {
 	'devname': '',
 	'network':
 		{
-			'address': '10.10.10.11',
+			'address': '10.10.10.10',
 			'netmask': '255.255.255.0',
 			#gateway: '',
 			'mtu': 1400,
@@ -23,7 +23,7 @@ Conf = {
 	# currently implemented are
 	#	UPHelper	Encodes 280 chars in one tweet, sometimes breaks
 	#	DPHelper	Encodes 138 chars in one tweet, more reliable
-	'coder': DPHelper(),
+	'coder': UPHelper(),
 	
 	# ======== Twitter settings ========
 	'twitter':
