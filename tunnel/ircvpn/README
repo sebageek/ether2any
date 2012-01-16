@@ -80,3 +80,9 @@ What could be done
  * find static linkable irc server, patch out flood protection
  * VVLAN - a Virtual VLAN between irc channels/servers
 
+
+Licensing
+=========
+Written by Sebastian Lohff <seba@seba-geek.de>
+Published under the GPLv3 or later
+
