@@ -1,7 +1,91 @@
+vRFC1149
+========
+This is an implementation of "IP over Avian Carrier", using tweets as
+virtualized avian carrier.
 
 
-Installation
-============
+Installation and requirements
+=============================
 You need
  * tweepy >= 1.8 (https://github.com/tweepy/tweepy.git)
  * python-bytearray
+
+Each client needs a twitter account to tweet network packets and one
+account to follow for incoming network packets. If the tweets of each account
+are public, the accounts don't need to follow each other. Currently, only point
+to point connections are possible, as specified by RFC1149. 
+
+
+How it works
+============
+The script needs one Twitter account. It registers the account via oAuth, so it
+becomes accessible (see Authorization) and then pull tweets from it via Twitter's
+streaming-API. Tweets are en-/decoded and (de-)fragmented using packaging
+helper (see Encoding). Incoming tweets are parsed as incoming  traffic, outgoing
+traffic is fragmented, encoded and then tweeted.
+
+
+Authorization
+~~~~~~~~~~~~~
+The script needs to be associated with Twitter through oAuth. If it is started
+without credentials, it gives you a link to twitter.com with a generated token
+and then asks for a PIN. After entering the PIN the script is fully
+authorized to both tweet and read tweets. The ACCESS_KEY and ACCESS_SECRET are
+saved into conf_auth.py.
+
+If the script already has an ACCESS_KEY and ACCESS_SECRET you won't be asked
+for credentials again.
+
+
+Encoding
+~~~~~~~~
+A tweet's maximum length is 140 characters. One character for twitter is one
+unicode character, meaning that one character can encode 20 bits (current
+uncode range is 0x0-0x110000). In vRFC1149's implementation two bytes are
+encoded in each character, leaving 4 bit of each char for metadata (the
+header).
+
+Sadly twitter removes, mangles or augmentates some of
+the characters. For more information about this look into the comments in the
+source (phelper.UPHelper.reassembleBrokenChars()).
+
+An alternative approach is to just tweet everything plain, reducing the payload
+of a tweet to 138 bytes (2 bytes reserved for header). Nevertheless, twitter
+transforms certain characters (<,> to &lt;, &gt;), so a workarround is needed,
+too.
+
+All available packaging helpers can be found in phelper.py.
+
+
+Twitter API Limits
+~~~~~~~~~~~~~~~~~~
+Twitter allows each client to do 1000 tweets a day. When considering a
+continuous connection and a tweet size of 280 bytes, the average speed is about
+3byte/s (273kb/day). Additional, twitter breaks down the 1000 tweets to an
+unspecified hourly limit.
+
+
+RFC1149 compability
+===================
+This implementation of RFC1149 does not reach 100% compability, since the
+general tweet comes without a leg on which the message could be taped to.
+Also, no duct tape is used (no taping whatsoever).
+
+Regarding the encoding, one could write a packaging helper more compatible
+with the RFC's frame format (hexadecimal representation with seperated octets).
+As a side effect, it would reduce the payload of one tweet to 46 bytes.
+
+
+What could be done
+==================
+ * create network topologies with Twitter's "following" feature
+ * support multiple clients
+ * create a table of characters which are not "eaten" by twitter or what they
+   get transformed to
+
+
+Licensing
+=========
+Written by Sebastian Lohff <seba@seba-geek.de>
+Published under the GPLv3 or later
+
