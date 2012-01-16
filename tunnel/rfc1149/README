@@ -1,8 +1,57 @@
-This is a helper for RFC1149 based networks. It will ask for every
-packet if it should be sent or not.
+RFC1149
+=======
+This is an implementation of RFC1149 "IP over Avian Carrier", aiming for 100%
+RFC compability (in contrast to vRFC1149). It was written for testing quadro
+copters as an alternative to pigeon based avian carriers. But, because no
+printers were available at that time, USB sticks became the medium of transfer
+(see the "usbip" tunnel).
 
-THIS IS NOT COMPLETE! Until now it is disfunctional (no printer support).
+WARNING: THIS TUNNEL IS DYSFUNCTIONAL. Some parts actually work, but it lacks
+         the printing part. 
 
-You need
- * tesseract for ocr
+
+Installation and requirements
+=============================
+ * tesseract-ocr
  * imagemagick
+ * python-pyserial / lpr / cups ?
+ * python-pyudev
+ * python-scapy
+
+
+How it works
+============
+Outgoing packets are converted into a hexadecimal representation with each
+octet seperated by a space. For fault detection a CRC32 checksum is appended to
+each packet. Before printing a packet, permission to print is requested from
+the user, so no paper is wasted on unwanted network traffic. A plus is that the
+user can act as a human firewall.
+
+The printed packet has to be taped to one of the legs of the carrier, as
+specified in the RFC. On the other side of the connection, the packet is
+optically scanned and put back into the tunnel software. The current
+implementation is monitoring all UDEV events and waits for a flashdrive
+containing photographs of network packets. New pictures are prepared for
+scanning using imagemagick's convert and then fed into tesseract. Tesseract is
+configured to only recognize uppercase hex-characters. After scanning the crc32
+sum is checked. If it checks out the packet will be written to the TUN device as
+incoming network traffic.
+
+Except for the printing part, the tunnel should be functional. Accepting and
+dropping packets, hex en-/decoding and checksumming is working. The only thing
+known to be missing is the printer connection. For that the method
+rfc1149.RFC1149.toPrint() needs to be implemented. The most straight forward
+approach would be using python's subprocess.Popen in connection with
+/usr/bin/lp and making the printer's name configurable.
+
+
+What could be done
+==================
+ * get two printers, implement rfc1140.RFC1149.toPrinter()
+
+
+Licensing
+=========
+Written by Sebastian Lohff <seba@seba-geek.de>
+Published under the GPLv3 or later
+
