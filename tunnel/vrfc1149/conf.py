@@ -29,7 +29,7 @@ Conf = {
 	'twitter':
 	{
 		# account to read network traffic from
-		'endpoint': "tw2tw2tw2",
+		'endpoint': None,
 		
 		# if set to None, these will be overwritten by config_auth.py
 		# if they are set to none there, this script will give you an
