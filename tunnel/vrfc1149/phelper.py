@@ -60,20 +60,25 @@ class UPHelper(PHelper):
 	<9 bits length of payload>
 	<32 bit random paket id greater than 0>"""
 
+	def __init__(self, smallTweets=False):
+		self.smallTweets = True
 
 	@staticmethod
 	def encode(data):
 		""" Generate list of packets with a header from data. """
 		packetId = random.randint(1, 2**32)
 		fragments = []
-		while len(data) >= 280:
-			newData = data[0:280]
-			if newData[-1] == '\x00' and newData[-2] == '\x00' and len(newData) == 280:
-				fragments.append(data[0:278])
-				data = data[278:]
+
+		# quick hack: 
+		plen = self.smallTweets and 276 or 280
+		while len(data) >= plen:
+			newData = data[0:plen]
+			if newData[-1] == '\x00' and newData[-2] == '\x00' and len(newData) == plen:
+				fragments.append(data[0:plen-2])
+				data = data[plen-2:]
 			else:
 				fragments.append(newData)
-				data = data[280:]
+				data = data[plen:]
 		if len(data) > 0:
 			fragments.append(data)
 		
