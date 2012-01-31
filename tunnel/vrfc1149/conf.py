@@ -24,6 +24,10 @@ Conf = {
 	#	UPHelper	Encodes 280 chars in one tweet, sometimes breaks
 	#	DPHelper	Encodes 138 chars in one tweet, more reliable
 	'coder': UPHelper(),
+
+	# use smaller tweets to get arround the random "msg over 140 chars"
+	# error from the twitter API. Currently only used by UPHelper
+	'smallTweets': True,
 	
 	# ======== Twitter settings ========
 	'twitter':

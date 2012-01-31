@@ -37,7 +37,7 @@ class PHelper():
 		return "0" * (leading-len(x)) + x
 	
 	@staticmethod
-	def encode(data):
+	def encode(data, smallTweets=False):
 		""" Encode data, return list of messages (max. 140 chars long) """
 		raise NotImplementedError("You need to implement this method when subclassing.")
 	
@@ -60,17 +60,14 @@ class UPHelper(PHelper):
 	<9 bits length of payload>
 	<32 bit random paket id greater than 0>"""
 
-	def __init__(self, smallTweets=False):
-		self.smallTweets = True
-
 	@staticmethod
-	def encode(data):
+	def encode(data, smallTweets=False):
 		""" Generate list of packets with a header from data. """
 		packetId = random.randint(1, 2**32)
 		fragments = []
 
 		# quick hack: 
-		plen = self.smallTweets and 276 or 280
+		plen = smallTweets and 276 or 280
 		while len(data) >= plen:
 			newData = data[0:plen]
 			if newData[-1] == '\x00' and newData[-2] == '\x00' and len(newData) == plen:
@@ -229,7 +226,7 @@ class DPHelper(PHelper):
 				.replace("&amp;", "&")
 	
 	@staticmethod
-	def encode(data):
+	def encode(data, smallTweets=False):
 		# twitter encodes <>'s ==> we need to encode & to distinguish between &lt; and an encoded etc.
 		data = DPHelper.textEncode(data)
 		packetId = random.randint(1, 2**11)
