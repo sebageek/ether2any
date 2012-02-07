@@ -43,10 +43,10 @@ As said in the section below: This needs to be implemented. ;)
 
 What could be done
 ==================
+ * add support to send mails directly via smtp, not via a specific smtp server
  * allow the spam tunnel to run as an IP tunnel, configurable via config
  * implement support for multiple clients
  * support exchange of encoding dictionary prior to sending/receiving data
- * add support to send mails directly via smtp, not via a specific smtp server
 
 
 Licensing

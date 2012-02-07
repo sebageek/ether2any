@@ -8,12 +8,13 @@ import asyncore
 import email
 from email.mime.text import MIMEText
 import imaplib
+import random
 import select
 import smtpd
 import smtplib
+import sys
 import time
 import threading
-import sys
 sys.path.append("../../../")
 
 from ether2any import Ether2Any
@@ -75,12 +76,14 @@ class SimpleSMTPServer(smtpd.SMTPServer):
 		smtpd.SMTPServer.__init__(self, *args, **kwargs)
 		self._handler = handler
 	def process_message(self, peer, mailfrom, mailto, data):
+		print "[SMTPD] Incoming mail"
 		# give mail to handler
 		self._handler.receiveMail(mailfrom, mailto, data)
 
 class SMTPServerThread(threading.Thread):
 	def __init__(self, listen, handler):
 		threading.Thread.__init__(self)
+		self.daemon = True
 		self.server = SimpleSMTPServer(handler, listen, None)
 	
 	def run(self):
@@ -89,6 +92,7 @@ class SMTPServerThread(threading.Thread):
 class SimpleIMAPClient(threading.Thread):
 	def __init__(self, imapConf, mailTo, handler):
 		threading.Thread.__init__(self)
+		self.daemon = True
 		self.imapConf = imapConf
 		self.imap = None
 		self.quit = False
@@ -227,9 +231,19 @@ class MailTunnel(Ether2Any):
 			self.smtp.sendmail(fromAddr, toAddrs, e.as_string())
 			print "Mail+reconnect took %fs" % (time.time()-t)
 	
+	def getRandomSubject(self):
+		return random.choice([
+			"Get laid TODAY!", "This is your chance", "Hello",
+			"Business proposal", "Your ad on 2 million websites",
+			"Make Money Online", "Assistance needed", "You WON!",
+			"Stop wasting time - buy viagra!", "She is waiting for you...",
+			"He is waiting for you...", "Your IP addres was logged!",
+			"Never be short again!", "Have your own traffic generator!",
+			"Credit report FRAUD ALERT", "It's time for you"])
+	
 	def sendToNet(self, packet):
 		data = self.generator.encode(packet)
-		self.sendMail(self.mailFrom, [self.mailTo], "Ohai!", data) 
+		self.sendMail(self.mailFrom, [self.mailTo], self.getRandomSubject(), data) 
 	
 	def sendToDev(self, socket):
 		pass
