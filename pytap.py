@@ -26,7 +26,7 @@ class TapDevice:
 		"""
 		self._mode = (tap and self.IFF_TAP) or self.IFF_TUN
 		self._fd = None
-		self._name = None
+		self._nametpl = name
 		self._tap = tap
 		self._mac = None
 		self._mtu = 1500
